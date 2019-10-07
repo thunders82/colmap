@@ -78,6 +78,8 @@ AutomaticReconstructionController::AutomaticReconstructionController(
     option_manager_.ModifyForHighQuality();
   } else if (options_.quality == Quality::EXTREME) {
     option_manager_.ModifyForExtremeQuality();
+  }else if (options_.quality == Quality::CUSTOM) {
+    option_manager_.ModifyForCustomQuality();
   }
 
   option_manager_.sift_extraction->num_threads = options_.num_threads;

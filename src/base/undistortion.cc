@@ -219,18 +219,35 @@ void COLMAPUndistorter::Undistort(const size_t reg_image_idx) const {
 
   Bitmap distorted_bitmap;
   const std::string input_image_path = JoinPaths(image_path_, image.Name());
-  if (!distorted_bitmap.Read(input_image_path)) {
-    std::cerr << "ERROR: Cannot read image at path " << input_image_path
-              << std::endl;
-    return;
+  FREE_IMAGE_FORMAT format = FreeImage_GetFIFFromFilename(input_image_path.c_str());
+  if (format == FIF_EXR){
+    if (!distorted_bitmap.ReadF(input_image_path)) {
+      std::cerr << "ERROR: Cannot read image at path " << input_image_path
+                << std::endl;
+      return;
+    }
+  }else{
+    if (!distorted_bitmap.Read(input_image_path)) {
+      std::cerr << "ERROR: Cannot read image at path " << input_image_path
+                << std::endl;
+      return;
+    }
   }
+
 
   Bitmap undistorted_bitmap;
   Camera undistorted_camera;
-  UndistortImage(options_, distorted_bitmap, camera, &undistorted_bitmap,
+  
+  if (format == FIF_EXR){
+    UndistortImageF(options_, distorted_bitmap, camera, &undistorted_bitmap,
+                   &undistorted_camera);
+    undistorted_bitmap.WriteF(output_image_path);
+  }else{
+    UndistortImage(options_, distorted_bitmap, camera, &undistorted_bitmap,
                  &undistorted_camera);
+    undistorted_bitmap.Write(output_image_path);
+  }
 
-  undistorted_bitmap.Write(output_image_path);
 }
 
 void COLMAPUndistorter::WritePatchMatchConfig() const {
@@ -849,12 +866,29 @@ void UndistortImage(const UndistortCameraOptions& options,
   CHECK_EQ(distorted_camera.Height(), distorted_bitmap.Height());
 
   *undistorted_camera = UndistortCamera(options, distorted_camera);
-  undistorted_bitmap->Allocate(static_cast<int>(undistorted_camera->Width()),
+  undistorted_bitmap->AllocateF(static_cast<int>(undistorted_camera->Width()),
                                static_cast<int>(undistorted_camera->Height()),
                                distorted_bitmap.IsRGB());
   distorted_bitmap.CloneMetadata(undistorted_bitmap);
 
   WarpImageBetweenCameras(distorted_camera, *undistorted_camera,
+                          distorted_bitmap, undistorted_bitmap);
+}
+
+void UndistortImageF(const UndistortCameraOptions& options,
+                    const Bitmap& distorted_bitmap,
+                    const Camera& distorted_camera, Bitmap* undistorted_bitmap,
+                    Camera* undistorted_camera) {
+  CHECK_EQ(distorted_camera.Width(), distorted_bitmap.Width());
+  CHECK_EQ(distorted_camera.Height(), distorted_bitmap.Height());
+
+  *undistorted_camera = UndistortCamera(options, distorted_camera);
+  undistorted_bitmap->AllocateF(static_cast<int>(undistorted_camera->Width()),
+                               static_cast<int>(undistorted_camera->Height()),
+                               distorted_bitmap.IsRGB());
+  distorted_bitmap.CloneMetadata(undistorted_bitmap);
+
+  WarpImageBetweenCamerasF(distorted_camera, *undistorted_camera,
                           distorted_bitmap, undistorted_bitmap);
 }
 

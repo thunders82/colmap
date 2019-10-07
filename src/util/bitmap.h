@@ -93,6 +93,7 @@ class Bitmap {
 
   // Allocate bitmap by overwriting the existing data.
   bool Allocate(const int width, const int height, const bool as_rgb);
+  bool AllocateF(const int width, const int height, const bool as_rgb);
 
   // Deallocate the bitmap by releasing the existing data.
   void Deallocate();
@@ -129,6 +130,8 @@ class Bitmap {
   // of the RGB color is used.
   bool GetPixel(const int x, const int y, BitmapColor<uint8_t>* color) const;
   bool SetPixel(const int x, const int y, const BitmapColor<uint8_t>& color);
+  bool GetPixelF(const int x, const int y, BitmapColor<float>* color) const;
+  bool SetPixelF(const int x, const int y, const BitmapColor<float>& color);
 
   // Get pointer to y-th scanline, where the 0-th scanline is at the top.
   const uint8_t* GetScanline(const int y) const;
@@ -143,6 +146,9 @@ class Bitmap {
   bool InterpolateBilinear(const double x, const double y,
                            BitmapColor<float>* color) const;
 
+  bool InterpolateBilinearF(const double x, const double y,
+                           BitmapColor<float>* color) const;
+
   // Extract EXIF information from bitmap. Returns false if no EXIF information
   // is embedded in the bitmap.
   bool ExifFocalLength(double* focal_length) const;
@@ -152,10 +158,15 @@ class Bitmap {
 
   // Read bitmap at given path and convert to grey- or colorscale.
   bool Read(const std::string& path, const bool as_rgb = true);
+  bool ReadF(const std::string& path, const bool as_rgb = true);
 
   // Write image to file. Flags can be used to set e.g. the JPEG quality.
   // Consult the FreeImage documentation for all available flags.
   bool Write(const std::string& path,
+             const FREE_IMAGE_FORMAT format = FIF_UNKNOWN,
+             const int flags = 0) const;
+
+  bool WriteF(const std::string& path,
              const FREE_IMAGE_FORMAT format = FIF_UNKNOWN,
              const int flags = 0) const;
 
@@ -170,6 +181,7 @@ class Bitmap {
   Bitmap Clone() const;
   Bitmap CloneAsGrey() const;
   Bitmap CloneAsRGB() const;
+  Bitmap CloneAsRGBF() const;
 
   // Clone metadata from this bitmap object to another target bitmap object.
   void CloneMetadata(Bitmap* target) const;
@@ -185,6 +197,7 @@ class Bitmap {
 
   static bool IsPtrGrey(FIBITMAP* data);
   static bool IsPtrRGB(FIBITMAP* data);
+  static bool IsPtrRGBF(FIBITMAP* data);
   static bool IsPtrSupported(FIBITMAP* data);
 
   FIBitmapPtr data_;

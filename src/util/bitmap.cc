@@ -96,6 +96,22 @@ bool Bitmap::Allocate(const int width, const int height, const bool as_rgb) {
   return data != nullptr;
 }
 
+bool Bitmap::AllocateF(const int width, const int height, const bool as_rgb) {
+  FIBITMAP* data = nullptr;
+  width_ = width;
+  height_ = height;
+  if (as_rgb) {
+    data = FreeImage_AllocateT(FIT_RGBF , width, height);
+    channels_ = 3;
+  } else {
+    const int kNumBitsPerPixel = 8;
+    data = FreeImage_Allocate(width, height, kNumBitsPerPixel);
+    channels_ = 1;
+  }
+  data_ = FIBitmapPtr(data, &FreeImage_Unload);
+  return data != nullptr;
+}
+
 void Bitmap::Deallocate() {
   data_.reset();
   width_ = 0;
@@ -174,6 +190,27 @@ bool Bitmap::GetPixel(const int x, const int y,
   return false;
 }
 
+bool Bitmap::GetPixelF(const int x, const int y,
+                      BitmapColor<float>* color) const {
+  if (x < 0 || x >= width_ || y < 0 || y >= height_) {
+    return false;
+  }
+
+  const float* line = (float*)FreeImage_GetScanLine(data_.get(), height_ - 1 - y);
+
+  if (IsGrey()) {
+    color->r = line[x];
+    return true;
+  } else if (IsRGB()) {
+    color->r = line[3 * x + FI_RGBA_RED];
+    color->g = line[3 * x + FI_RGBA_GREEN];
+    color->b = line[3 * x + FI_RGBA_BLUE];
+    return true;
+  }
+
+  return false;
+}
+
 bool Bitmap::SetPixel(const int x, const int y,
                       const BitmapColor<uint8_t>& color) {
   if (x < 0 || x >= width_ || y < 0 || y >= height_) {
@@ -181,6 +218,27 @@ bool Bitmap::SetPixel(const int x, const int y,
   }
 
   uint8_t* line = FreeImage_GetScanLine(data_.get(), height_ - 1 - y);
+
+  if (IsGrey()) {
+    line[x] = color.r;
+    return true;
+  } else if (IsRGB()) {
+    line[3 * x + FI_RGBA_RED] = color.r;
+    line[3 * x + FI_RGBA_GREEN] = color.g;
+    line[3 * x + FI_RGBA_BLUE] = color.b;
+    return true;
+  }
+
+  return false;
+}
+
+bool Bitmap::SetPixelF(const int x, const int y,
+                      const BitmapColor<float>& color) {
+  if (x < 0 || x >= width_ || y < 0 || y >= height_) {
+    return false;
+  }
+
+  float* line = (float*)FreeImage_GetScanLine(data_.get(), height_ - 1 - y);
 
   if (IsGrey()) {
     line[x] = color.r;
@@ -275,6 +333,68 @@ bool Bitmap::InterpolateBilinear(const double x, const double y,
     color->r = dy_1 * v0_r + dy * v1_r;
     color->g = dy_1 * v0_g + dy * v1_g;
     color->b = dy_1 * v0_b + dy * v1_b;
+    return true;
+  }
+
+  return false;
+}
+
+bool Bitmap::InterpolateBilinearF(const double x, const double y,
+                                 BitmapColor<float>* color) const {
+  // FreeImage's coordinate system origin is in the lower left of the image.
+  const double inv_y = height_ - 1 - y;
+
+  const int x0 = static_cast<int>(std::floor(x));
+  const int x1 = x0 + 1;
+  const int y0 = static_cast<int>(std::floor(inv_y));
+  const int y1 = y0 + 1;
+
+  if (x0 < 0 || x1 >= width_ || y0 < 0 || y1 >= height_) {
+    return false;
+  }
+
+  const double dx = x - x0;
+  const double dy = inv_y - y0;
+  const double dx_1 = 1 - dx;
+  const double dy_1 = 1 - dy;
+
+  // const uint8_t* line0 = FreeImage_GetScanLine(data_.get(), y0);
+  // const uint8_t* line1 = FreeImage_GetScanLine(data_.get(), y1);
+  const float* line0 = (float*)FreeImage_GetScanLine(data_.get(), y0);
+  const float* line1 = (float*)FreeImage_GetScanLine(data_.get(), y1);
+
+  if (IsGrey()) {
+    // Top row, column-wise linear interpolation.
+    const double v0 = dx_1 * line0[x0] + dx * line0[x1];
+
+    // Bottom row, column-wise linear interpolation.
+    const double v1 = dx_1 * line1[x0] + dx * line1[x1];
+
+    // Row-wise linear interpolation.
+    color->r = dy_1 * v0 + dy * v1;
+    return true;
+  } else if (IsRGB()) {
+
+    const float* p00 = (float*) &line0[3 * x0];
+    const float* p01 = (float*) &line0[3 * x1];
+    const float* p10 = (float*) &line1[3 * x0];
+    const float* p11 = (float*) &line1[3 * x1];
+
+    // Top row, column-wise linear interpolation.
+    const double v0_r = dx_1 * p00[FI_RGBA_RED] + dx * p01[FI_RGBA_RED];
+    const double v0_g = dx_1 * p00[FI_RGBA_GREEN] + dx * p01[FI_RGBA_GREEN];
+    const double v0_b = dx_1 * p00[FI_RGBA_BLUE] + dx * p01[FI_RGBA_BLUE];
+
+    // Bottom row, column-wise linear interpolation.
+    const double v1_r = dx_1 * p10[FI_RGBA_RED] + dx * p11[FI_RGBA_RED];
+    const double v1_g = dx_1 * p10[FI_RGBA_GREEN] + dx * p11[FI_RGBA_GREEN];
+    const double v1_b = dx_1 * p10[FI_RGBA_BLUE] + dx * p11[FI_RGBA_BLUE];
+
+    // Row-wise linear interpolation.
+    color->r = dy_1 * v0_r + dy * v1_r;
+    color->g = dy_1 * v0_g + dy * v1_g;
+    color->b = dy_1 * v0_b + dy * v1_b;
+
     return true;
   }
 
@@ -423,9 +543,49 @@ bool Bitmap::Read(const std::string& path, const bool as_rgb) {
   }
 
   data_ = FIBitmapPtr(fi_bitmap, &FreeImage_Unload);
+  FIBITMAP* converted_bitmap;
 
   if (!IsPtrRGB(data_.get()) && as_rgb) {
-    FIBITMAP* converted_bitmap = FreeImage_ConvertTo24Bits(fi_bitmap);
+    converted_bitmap = FreeImage_ConvertTo24Bits(fi_bitmap);
+    data_ = FIBitmapPtr(converted_bitmap, &FreeImage_Unload);
+  } else if (!IsPtrGrey(data_.get()) && !as_rgb) {
+    FIBITMAP* converted_bitmap = FreeImage_ConvertToGreyscale(fi_bitmap);
+    data_ = FIBitmapPtr(converted_bitmap, &FreeImage_Unload);
+  }
+
+  if (!IsPtrSupported(data_.get())) {
+    data_.reset();
+    return false;
+  }
+
+  width_ = FreeImage_GetWidth(data_.get());
+  height_ = FreeImage_GetHeight(data_.get());
+  channels_ = as_rgb ? 3 : 1;
+
+  return true;
+}
+
+bool Bitmap::ReadF(const std::string& path, const bool as_rgb) {
+  if (!ExistsFile(path)) {
+    return false;
+  }
+
+  const FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
+
+  if (format == FIF_UNKNOWN) {
+    return false;
+  }
+
+  FIBITMAP* fi_bitmap = FreeImage_Load(format, path.c_str());
+  if (fi_bitmap == nullptr) {
+    return false;
+  }
+
+  data_ = FIBitmapPtr(fi_bitmap, &FreeImage_Unload);
+  FIBITMAP* converted_bitmap;
+
+  if (!IsPtrRGB(data_.get()) && as_rgb) {
+    converted_bitmap = FreeImage_ConvertToRGBF  (fi_bitmap);
     data_ = FIBitmapPtr(converted_bitmap, &FreeImage_Unload);
   } else if (!IsPtrGrey(data_.get()) && !as_rgb) {
     FIBITMAP* converted_bitmap = FreeImage_ConvertToGreyscale(fi_bitmap);
@@ -461,7 +621,38 @@ bool Bitmap::Write(const std::string& path, const FREE_IMAGE_FORMAT format,
   if (save_format == FIF_JPEG && flags == 0) {
     // Use superb JPEG quality by default to avoid artifacts.
     save_flags = JPEG_QUALITYSUPERB;
+  }else if(save_format == FIF_JPEG && flags == 0) {
+    // Use Float output.
+    save_flags = EXR_FLOAT;
   }
+
+  bool success = false;
+  if (save_flags == 0) {
+    success = FreeImage_Save(save_format, data_.get(), path.c_str());
+  } else {
+    success =
+        FreeImage_Save(save_format, data_.get(), path.c_str(), save_flags);
+  }
+
+  return success;
+}
+
+bool Bitmap::WriteF(const std::string& path, const FREE_IMAGE_FORMAT format,
+                   const int flags) const {
+  FREE_IMAGE_FORMAT save_format;
+  if (format == FIF_UNKNOWN) {
+    save_format = FreeImage_GetFIFFromFilename(path.c_str());
+    if (save_format == FIF_UNKNOWN) {
+      // If format could not be deduced, save as PNG by default.
+      save_format = FIF_PNG;
+    }
+  } else {
+    save_format = format;
+  }
+
+  int save_flags = flags;
+
+  save_flags = EXR_FLOAT;
 
   bool success = false;
   if (save_flags == 0) {
@@ -502,6 +693,8 @@ void Bitmap::Smooth(const float sigma_x, const float sigma_y) {
   }
 }
 
+
+
 void Bitmap::Rescale(const int new_width, const int new_height,
                      const FREE_IMAGE_FILTER filter) {
   SetPtr(FreeImage_Rescale(data_.get(), new_width, new_height, filter));
@@ -514,6 +707,14 @@ Bitmap Bitmap::CloneAsGrey() const {
     return Clone();
   } else {
     return Bitmap(FreeImage_ConvertToGreyscale(data_.get()));
+  }
+}
+
+Bitmap Bitmap::CloneAsRGBF() const {
+  if (IsRGB()) {
+    return Clone();
+  } else {
+    return Bitmap(FreeImage_ConvertToRGBF(data_.get()));
   }
 }
 
@@ -572,8 +773,13 @@ bool Bitmap::IsPtrRGB(FIBITMAP* data) {
          FreeImage_GetBPP(data) == 24;
 }
 
+bool Bitmap::IsPtrRGBF(FIBITMAP* data) {
+  return FreeImage_GetColorType(data) == FIC_RGB &&
+         FreeImage_GetBPP(data) == 24*4;
+}
+
 bool Bitmap::IsPtrSupported(FIBITMAP* data) {
-  return IsPtrGrey(data) || IsPtrRGB(data);
+  return IsPtrGrey(data) || IsPtrRGB(data) || IsPtrRGBF(data);
 }
 
 float JetColormap::Red(const float gray) { return Base(gray - 0.25f); }

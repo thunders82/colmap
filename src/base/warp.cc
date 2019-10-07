@@ -95,6 +95,53 @@ void WarpImageBetweenCameras(const Camera& source_camera,
   }
 }
 
+void WarpImageBetweenCamerasF(const Camera& source_camera,
+                             const Camera& target_camera,
+                             const Bitmap& source_image, Bitmap* target_image) {
+  CHECK_EQ(source_camera.Width(), source_image.Width());
+  CHECK_EQ(source_camera.Height(), source_image.Height());
+  CHECK_NOTNULL(target_image);
+
+  target_image->AllocateF(static_cast<int>(source_camera.Width()),
+                         static_cast<int>(source_camera.Height()),
+                         source_image.IsRGB());
+
+  // To avoid aliasing, perform the warping in the source resolution and
+  // then rescale the image at the end.
+  Camera scaled_target_camera = target_camera;
+  if (target_camera.Width() != source_camera.Width() ||
+      target_camera.Height() != source_camera.Height()) {
+    scaled_target_camera.Rescale(source_camera.Width(), source_camera.Height());
+  }
+
+  Eigen::Vector2d image_point;
+  for (int y = 0; y < target_image->Height(); ++y) {
+    image_point.y() = y + 0.5;
+    for (int x = 0; x < target_image->Width(); ++x) {
+      image_point.x() = x + 0.5;
+
+      // Camera models assume that the upper left pixel center is (0.5, 0.5).
+      const Eigen::Vector2d world_point =
+          scaled_target_camera.ImageToWorld(image_point);
+      const Eigen::Vector2d source_point =
+          source_camera.WorldToImage(world_point);
+
+      BitmapColor<float> color;
+      if (source_image.InterpolateBilinearF(source_point.x() - 0.5,
+                                           source_point.y()- 0.5, &color)) {
+        target_image->SetPixelF(x, y, color);
+      } else {
+        target_image->SetPixelF(x, y, BitmapColor<float>(0));
+      }
+    }
+  }
+
+  if (target_camera.Width() != source_camera.Width() ||
+      target_camera.Height() != source_camera.Height()) {
+    target_image->Rescale(target_camera.Width(), target_camera.Height());
+  }
+}
+
 void WarpImageWithHomography(const Eigen::Matrix3d& H,
                              const Bitmap& source_image, Bitmap* target_image) {
   CHECK_NOTNULL(target_image);

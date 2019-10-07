@@ -177,6 +177,11 @@ void UndistortImage(const UndistortCameraOptions& options,
                     const Camera& distorted_camera, Bitmap* undistorted_image,
                     Camera* undistorted_camera);
 
+void UndistortImageF(const UndistortCameraOptions& options,
+                    const Bitmap& distorted_image,
+                    const Camera& distorted_camera, Bitmap* undistorted_image,
+                    Camera* undistorted_camera);
+
 // Undistort all cameras in the reconstruction and accordingly all
 // observations in their corresponding images.
 void UndistortReconstruction(const UndistortCameraOptions& options,

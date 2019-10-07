@@ -77,6 +77,7 @@ class OptionManager {
   void ModifyForMediumQuality();
   void ModifyForHighQuality();
   void ModifyForExtremeQuality();
+  void ModifyForCustomQuality();
 
   void AddAllOptions();
   void AddLogOptions();

@@ -162,6 +162,28 @@ void OptionManager::ModifyForExtremeQuality() {
   mapper->ba_global_max_num_iterations = 100;
 }
 
+void OptionManager::ModifyForCustomQuality() {
+  // Most of the options are set to custom quality by default.
+  image_reader->single_camera = true;
+   sift_extraction->estimate_affine_shape = true;
+   sift_extraction->domain_size_pooling = true;
+   sift_matching->guided_matching = true;
+  mapper->ba_local_max_num_iterations = 50;
+  mapper->ba_local_max_refinements = 3;
+  mapper->ba_global_max_num_iterations = 100;
+  mapper->triangulation.ignore_two_view_tracks = false; // true
+  //sift_extraction->max_image_size = 4096;
+  sift_extraction->max_image_size = 6000;
+  sift_matching->max_num_matches = 50768; // 32768
+  sift_matching->multiple_models = false; // false
+  mapper->multiple_models = false; // true
+  patch_match_stereo->window_radius = 5; // 5  --> mayt need to increase for poor textured image (15-20?)
+  stereo_fusion->min_num_pixels = 1; // 5
+
+
+
+}
+
 void OptionManager::AddAllOptions() {
   AddLogOptions();
   AddDatabaseOptions();

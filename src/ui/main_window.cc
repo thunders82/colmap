@@ -1202,7 +1202,8 @@ void MainWindow::SetOptions() {
   quality_items << "Low"
                 << "Medium"
                 << "High"
-                << "Extreme";
+                << "Extreme"
+                << "Custom";
   bool quality_ok;
   const QString quality_item = QInputDialog::getItem(
       this, "", "Quality:", quality_items, 2, false, &quality_ok);
@@ -1231,6 +1232,8 @@ void MainWindow::SetOptions() {
     options_.ModifyForHighQuality();
   } else if (quality_item == "Extreme") {
     options_.ModifyForExtremeQuality();
+  }else if (quality_item == "Custom") {
+    options_.ModifyForCustomQuality();
   } else {
     LOG(FATAL) << "Quality level does not exist";
   }

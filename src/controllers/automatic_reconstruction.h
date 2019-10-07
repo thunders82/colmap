@@ -43,7 +43,7 @@ namespace colmap {
 class AutomaticReconstructionController : public Thread {
  public:
   enum class DataType { INDIVIDUAL, VIDEO, INTERNET };
-  enum class Quality { LOW, MEDIUM, HIGH, EXTREME };
+  enum class Quality { LOW, MEDIUM, HIGH, EXTREME, CUSTOM };
   enum class Mesher { POISSON, DELAUNAY };
 
   struct Options {

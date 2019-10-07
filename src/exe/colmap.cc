@@ -105,7 +105,7 @@ int RunAutomaticReconstructor(int argc, char** argv) {
                            &reconstruction_options.vocab_tree_path);
   options.AddDefaultOption("data_type", &data_type,
                            "{individual, video, internet}");
-  options.AddDefaultOption("quality", &quality, "{low, medium, high, extreme}");
+  options.AddDefaultOption("quality", &quality, "{low, medium, high, extreme, custom}");
   options.AddDefaultOption("camera_model",
                            &reconstruction_options.camera_model);
   options.AddDefaultOption("single_camera",
@@ -145,6 +145,9 @@ int RunAutomaticReconstructor(int argc, char** argv) {
   } else if (quality == "extreme") {
     reconstruction_options.quality =
         AutomaticReconstructionController::Quality::EXTREME;
+  }else if (quality == "custom") {
+    reconstruction_options.quality =
+        AutomaticReconstructionController::Quality::CUSTOM;
   } else {
     LOG(FATAL) << "Invalid quality provided";
   }
@@ -320,7 +323,7 @@ int RunProjectGenerator(int argc, char** argv) {
 
   OptionManager options;
   options.AddRequiredOption("output_path", &output_path);
-  options.AddDefaultOption("quality", &quality, "{low, medium, high, extreme}");
+  options.AddDefaultOption("quality", &quality, "{low, medium, high, extreme, custom}");
   options.Parse(argc, argv);
 
   OptionManager output_options;
@@ -335,6 +338,8 @@ int RunProjectGenerator(int argc, char** argv) {
     output_options.ModifyForHighQuality();
   } else if (quality == "extreme") {
     output_options.ModifyForExtremeQuality();
+  }else if (quality == "custom") {
+    output_options.ModifyForCustomQuality();
   } else {
     LOG(FATAL) << "Invalid quality provided";
   }

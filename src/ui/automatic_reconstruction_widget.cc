@@ -73,6 +73,7 @@ AutomaticReconstructionWidget::AutomaticReconstructionWidget(
   quality_cb_->addItem("Medium");
   quality_cb_->addItem("High");
   quality_cb_->addItem("Extreme");
+  quality_cb_->addItem("Custom");
   quality_cb_->setCurrentIndex(2);
   grid_layout_->addWidget(quality_cb_, grid_layout_->rowCount() - 1, 1);
 
@@ -154,6 +155,9 @@ void AutomaticReconstructionWidget::Run() {
       break;
     case 3:
       options_.quality = AutomaticReconstructionController::Quality::EXTREME;
+      break;
+    case 4:
+      options_.quality = AutomaticReconstructionController::Quality::CUSTOM;
       break;
     default:
       options_.quality = AutomaticReconstructionController::Quality::HIGH;
